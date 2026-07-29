@@ -1,0 +1,133 @@
+# Persian translations for Aghamohandes Backend.
+# Copyright (C) 2026 Aghamohandes Team
+# This file is distributed under the same license as the Aghamohandes Backend package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Aghamohandes Backend 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-29 20:50+0330\n"
+"PO-Revision-Date: 2026-07-29 20:50+0330\n"
+"Last-Translator: Aghamohandes Team\n"
+"Language-Team: Persian\n"
+"Language: fa\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Admin Users"
+msgstr "کاربران مدیر"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Dashboard"
+msgstr "داشبورد"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Group Messages"
+msgstr "پیام‌های گروپی"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "New Users"
+msgstr "کاربران جدید"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Transactions"
+msgstr "تراکنش‌ها"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "User Messages"
+msgstr "پیام‌های کاربر"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Users"
+msgstr "کاربران"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Groups"
+msgstr "گروه‌ها"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Wallets"
+msgstr "کیف‌پول‌ها"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Messaging"
+msgstr "پیام‌رسانی"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Navigation"
+msgstr "ناوبری"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Wallet Management"
+msgstr "مدیریت کیف‌پول"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "account management"
+msgstr "مدیریت حساب"
+
+#: aghamohandes_backend/admin_panel.py
+msgid "Group Users"
+msgstr "کاربران گروپ"
+
+#: aghamohandes_backend/urls.py
+msgid "Aghamohandes-backend Adminstoration"
+msgstr "مدیریت سیستم Aghamohandes"
+
+#: apps/base/apps.py
+msgid "Base Data"
+msgstr "داده‌های پایه"
+
+#: apps/dashboard/templates/admin/dashboard.html
+msgid "Django site admin"
+msgstr "مدیریت سایت جنگو"
+
+#: apps/dashboard/utils.py
+msgid "Development"
+msgstr "توسعه"
+
+#: apps/dashboard/utils.py
+msgid "Production"
+msgstr "تولید"
+
+#: apps/dashboard/views.py
+msgid "Registered Users"
+msgstr "کاربران ثبت‌شده"
+
+#: apps/dashboard/views.py
+msgid "Wallet Balances"
+msgstr "موجودی کیف‌پول"
+
+#: apps/dashboard/views.py
+msgid "progress from last week"
+msgstr "پیشرفت از هفته گذشته"
+
+#: core/choice.py
+msgid "EXAMPLE CHOICE NOT DEFINED"
+msgstr "انتخاب نمونه تعریف نشده"
+
+#: core/choice.py
+msgid "EXAMPLE CHOICE ONE"
+msgstr "انتخاب نمونه یک"
+
+#: core/choice.py
+msgid "EXAMPLE CHOICE ZERO"
+msgstr "انتخاب نمونه صفر"
+
+#: core/choice.py
+msgid "New Answer"
+msgstr "پاسخ جدید"
+
+#: core/choice.py
+msgid "Not Defined"
+msgstr "تعریف نشده"
+
+#: core/models.py
+msgid "Created At"
+msgstr "ایجاد شده در"
+
+#: core/models.py
+msgid "view count"
+msgstr "تعداد بازدید"

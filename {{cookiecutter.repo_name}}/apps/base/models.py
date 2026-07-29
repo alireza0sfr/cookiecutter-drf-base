@@ -1,6 +1,4 @@
-"""Models for base app."""
-
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
-
-# Add your base models here
+# some Base models that other models may needs them ...
