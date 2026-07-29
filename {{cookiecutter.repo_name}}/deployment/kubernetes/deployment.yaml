@@ -1,0 +1,360 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aghamohandes-web
+  namespace: default
+  labels:
+    app: aghamohandes
+    component: web
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: aghamohandes
+      component: web
+  template:
+    metadata:
+      labels:
+        app: aghamohandes
+        component: web
+    spec:
+      # Service account
+      serviceAccountName: aghamohandes
+
+      # Security context
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+
+      # Init container - run migrations
+      initContainers:
+      - name: migrate
+        image: aghamohandes:latest
+        imagePullPolicy: Always
+        command: ["python", "manage.py", "migrate", "--noinput"]
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: database-url
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: secret-key
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+      # Main containers
+      containers:
+      # Django Web Server
+      - name: web
+        image: aghamohandes:latest
+        imagePullPolicy: Always
+
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+              - ALL
+
+        # Ports
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+
+        # Environment variables
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: DEBUG
+          value: "false"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: database-url
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: aghamohandes-config
+              key: redis-host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: aghamohandes-config
+              key: redis-port
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: redis-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: secret-key
+        - name: ALLOWED_HOSTS
+          valueFrom:
+            configMapKeyRef:
+              name: aghamohandes-config
+              key: allowed-hosts
+        - name: CORS_ALLOWED_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: aghamohandes-config
+              key: cors-origins
+        - name: EMAIL_HOST
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: email-host
+        - name: EMAIL_HOST_USER
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: email-host-user
+        - name: EMAIL_HOST_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: email-host-password
+
+        # Liveness and readiness probes
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        # Resource limits
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+
+        # Volume mounts
+        volumeMounts:
+        - name: media
+          mountPath: /app/media
+        - name: static
+          mountPath: /app/static
+        - name: logs
+          mountPath: /app/logs
+
+        # Lifecycle hooks
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+
+      # Celery Worker
+      - name: celery
+        image: aghamohandes:latest
+        imagePullPolicy: Always
+
+        command: ["celery", "-A", "aghamohandes_backend", "worker", "-l", "info", "--concurrency=4"]
+
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+              - ALL
+
+        # Environment variables (same as web)
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: DEBUG
+          value: "false"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: database-url
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: aghamohandes-config
+              key: redis-host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: aghamohandes-config
+              key: redis-port
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: redis-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: secret-key
+
+        # Resource limits (lower than web server)
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+        # Volume mounts
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+
+      # Volumes
+      volumes:
+      - name: media
+        emptyDir: {}
+      - name: static
+        emptyDir: {}
+      - name: logs
+        emptyDir: {}
+
+      # Affinity rules (spread across nodes)
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - aghamohandes
+              topologyKey: kubernetes.io/hostname
+
+      # Termination grace period
+      terminationGracePeriodSeconds: 30
+
+---
+# Deployment for Celery Beat (Task Scheduler)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aghamohandes-beat
+  namespace: default
+  labels:
+    app: aghamohandes
+    component: beat
+spec:
+  replicas: 1  # Only one instance should run
+  selector:
+    matchLabels:
+      app: aghamohandes
+      component: beat
+  template:
+    metadata:
+      labels:
+        app: aghamohandes
+        component: beat
+    spec:
+      serviceAccountName: aghamohandes
+
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+
+      containers:
+      - name: beat
+        image: aghamohandes:latest
+        imagePullPolicy: Always
+
+        command: ["celery", "-A", "aghamohandes_backend", "beat", "-l", "info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+              - ALL
+
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: DEBUG
+          value: "false"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: database-url
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: aghamohandes-config
+              key: redis-host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: aghamohandes-config
+              key: redis-port
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: redis-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aghamohandes-secrets
+              key: secret-key
+
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+
+      volumes:
+      - name: logs
+        emptyDir: {}
+
+      terminationGracePeriodSeconds: 30

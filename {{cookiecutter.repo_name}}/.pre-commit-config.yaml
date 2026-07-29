@@ -1,0 +1,58 @@
+# Pre-commit hooks for code quality
+# Install with: pre-commit install
+# Run manually with: pre-commit run --all-files
+
+repos:
+  # Ruff: Fast Python linter & formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.7
+    hooks:
+      # Linter
+      - id: ruff
+        args: [--fix]
+        stages: [commit]
+      # Formatter
+      - id: ruff-format
+        stages: [commit]
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Prevent giant files from being committed
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      # Check for files that would conflict in merge
+      - id: check-merge-conflict
+      # Check YAML syntax
+      - id: check-yaml
+        args: ['--unsafe']
+      # Check TOML syntax
+      - id: check-toml
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+      # Trim trailing whitespace
+      - id: trailing-whitespace
+      # Check JSON syntax
+      - id: check-json
+      # Detect private keys
+      - id: detect-private-key
+      # Check for debugger imports
+      - id: debug-statements
+
+  # Django-specific checks
+  - repo: https://github.com/adamchainz/django-upgrade
+    rev: '1.14.0'
+    hooks:
+      - id: django-upgrade
+        args: ['--target-version', '5.0']
+
+# Configuration for specific tools
+ci:
+  skip: []
+  autofix_commit_msg: 'Automated code quality fixes (pre-commit)'
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: 'Bump pre-commit hook versions'
+  autoupdate_schedule: weekly
+  submodules: false

@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aghamohandes-config
+  namespace: default
+  labels:
+    app: aghamohandes
+data:
+  # Database
+  postgres-host: "postgres.default.svc.cluster.local"
+  postgres-port: "5432"
+  postgres-db: "aghamohandes"
+
+  # Redis
+  redis-host: "redis.default.svc.cluster.local"
+  redis-port: "6379"
+
+  # Django settings
+  django-settings-module: "aghamohandes_backend.settings"
+  allowed-hosts: "api.example.com,*.example.com"
+  cors-origins: "https://frontend.example.com,https://staging-frontend.example.com"
+
+  # Email settings
+  email-port: "587"
+  email-use-tls: "true"
+
+  # Application configuration
+  environment: "production"
+  debug: "false"
+
+  # Logging
+  log-level: "INFO"
+  sentry-environment: "production"
+
+---
+# ConfigMap for Nginx configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aghamohandes-nginx-config
+  namespace: default
+  labels:
+    app: aghamohandes
+data:
+  nginx.conf: |
+    worker_processes auto;
+    events { worker_connections 1024; }
+    http {
+      upstream django {
+        server aghamohandes-web:8000;
+      }
+      server {
+        listen 80;
+        server_name _;
+        location / {
+          proxy_pass http://django;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        }
+      }
+    }
+
+---
+# ConfigMap for startup scripts
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aghamohandes-scripts
+  namespace: default
+  labels:
+    app: aghamohandes
+data:
+  health-check.sh: |
+    #!/bin/bash
+    set -e
+    curl -f http://localhost:8000/health/ || exit 1
+    exit 0
+
+  wait-for-db.sh: |
+    #!/bin/bash
+    set -e
+    host=$1
+    port=${2:-5432}
+    shift 2
+    cmd="$@"
+
+    until nc -z "$host" "$port"; do
+      >&2 echo "Postgres is unavailable - sleeping"
+      sleep 1
+    done
+
+    >&2 echo "Postgres is up - executing command"
+    exec $cmd
+
+  wait-for-redis.sh: |
+    #!/bin/bash
+    set -e
+    host=$1
+    port=${2:-6379}
+    shift 2
+    cmd="$@"
+
+    until redis-cli -h "$host" -p "$port" ping >/dev/null 2>&1; do
+      >&2 echo "Redis is unavailable - sleeping"
+      sleep 1
+    done
+
+    >&2 echo "Redis is up - executing command"
+    exec $cmd

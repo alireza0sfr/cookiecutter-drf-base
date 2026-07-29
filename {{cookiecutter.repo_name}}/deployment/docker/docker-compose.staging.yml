@@ -1,0 +1,171 @@
+# Docker Compose for Staging Environment
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.staging.yml up
+# Or: docker-compose -f docker-compose.staging.yml up
+
+version: '3.9'
+
+services:
+  # ========================================================================
+  # PostgreSQL Database (Staging)
+  # ========================================================================
+  db:
+    image: postgres:14-alpine
+    container_name: aghamohandes-db-staging
+    environment:
+      POSTGRES_DB: aghamohandes
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - postgres_data_staging:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aghamohandes-staging
+
+  # ========================================================================
+  # Redis Cache & Message Broker (Staging)
+  # ========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: aghamohandes-redis-staging
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data_staging:/data
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aghamohandes-staging
+
+  # ========================================================================
+  # Django Web Application (Staging)
+  # ========================================================================
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: staging
+    container_name: aghamohandes-web-staging
+    environment:
+      DEBUG: "true"
+      ENVIRONMENT: staging
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change-me}@db:5432/aghamohandes
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SECRET_KEY: ${SECRET_KEY:-staging-secret-key-change-in-production}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,staging.example.com}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,https://staging.example.com}
+    volumes:
+      - media_staging:/app/media
+      - static_staging:/app/static
+      - logs_staging:/app/logs
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aghamohandes-staging
+    restart: unless-stopped
+
+  # ========================================================================
+  # Celery Worker (Staging)
+  # ========================================================================
+  celery:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: staging
+    container_name: aghamohandes-celery-staging
+    command: celery -A aghamohandes_backend worker -l info --concurrency=2
+    environment:
+      DEBUG: "true"
+      ENVIRONMENT: staging
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change-me}@db:5432/aghamohandes
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SECRET_KEY: ${SECRET_KEY:-staging-secret-key-change-in-production}
+    volumes:
+      - logs_staging:/app/logs
+    depends_on:
+      - db
+      - redis
+      - web
+    networks:
+      - aghamohandes-staging
+    restart: unless-stopped
+
+  # ========================================================================
+  # Celery Beat (Task Scheduler - Staging)
+  # ========================================================================
+  celery-beat:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: staging
+    container_name: aghamohandes-beat-staging
+    command: celery -A aghamohandes_backend beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      DEBUG: "true"
+      ENVIRONMENT: staging
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change-me}@db:5432/aghamohandes
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SECRET_KEY: ${SECRET_KEY:-staging-secret-key-change-in-production}
+    volumes:
+      - logs_staging:/app/logs
+    depends_on:
+      - db
+      - redis
+      - web
+    networks:
+      - aghamohandes-staging
+    restart: unless-stopped
+
+  # ========================================================================
+  # Nginx Reverse Proxy (Staging)
+  # ========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: aghamohandes-nginx-staging
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx-staging.conf:/etc/nginx/nginx.conf:ro
+      - static_staging:/app/static:ro
+      - media_staging:/app/media:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - web
+    networks:
+      - aghamohandes-staging
+    restart: unless-stopped
+
+volumes:
+  postgres_data_staging:
+    driver: local
+  redis_data_staging:
+    driver: local
+  media_staging:
+    driver: local
+  static_staging:
+    driver: local
+  logs_staging:
+    driver: local
+
+networks:
+  aghamohandes-staging:
+    driver: bridge

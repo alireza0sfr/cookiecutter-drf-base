@@ -1,0 +1,198 @@
+# Kustomize configuration for Aghamohandes Backend
+# Usage: kustomize build . | kubectl apply -f -
+# Or: kubectl apply -k .
+# Or with overlays: kubectl apply -k overlays/production
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Metadata
+namespace: default
+namePrefix: aghamohandes-
+
+# Common labels applied to all resources
+commonLabels:
+  app: aghamohandes
+  version: "1.0"
+  managed-by: kustomize
+
+# Common annotations
+commonAnnotations:
+  project: aghamohandes-backend
+  documentation: "https://github.com/aghamohandes/aghamohandes-backend"
+
+# Resources to include
+resources:
+- rbac.yaml
+- configmap.yaml
+- secret-example.yaml
+- deployment.yaml
+- service.yaml
+- ingress.yaml
+
+# Image configuration
+images:
+- name: aghamohandes
+  newName: aghamohandes
+  newTag: "latest"
+
+# Replicas override
+replicas:
+- name: aghamohandes-web
+  count: 3
+- name: aghamohandes-beat
+  count: 1
+
+# Patches for customization
+patchesStrategicMerge:
+# Patch for resource limits
+- |-
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: aghamohandes-web
+  spec:
+    template:
+      spec:
+        containers:
+        - name: web
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+# Vars for template substitution
+vars:
+- name: NAMESPACE
+  objref:
+    kind: Service
+    name: aghamohandes-web
+    apiVersion: v1
+  fieldref:
+    fieldpath: metadata.namespace
+
+# ConfigMap generators
+configMapGenerator:
+- name: aghamohandes-version
+  literals:
+  - version=1.0.0
+  - buildDate=2026-07-29
+  - gitCommit=main
+
+# Secret generators (use files or environment variables in CI/CD)
+# secretGenerator:
+# - name: aghamohandes-secrets
+#   envs:
+#   - .env.secret
+
+# JSON patches for complex changes
+patchesJson6902: []
+
+# Vars substitution in resources
+replacements: []
+
+# Sort manifest for consistency
+sortOrder: filenameorder
+
+---
+# Kustomization for development environment
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: kustomization-dev
+  namespace: default
+
+# Override for dev
+replicas:
+- name: aghamohandes-web
+  count: 1
+- name: aghamohandes-beat
+  count: 1
+
+# Patch debug mode for development
+patchesStrategicMerge:
+- |-
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: aghamohandes-config
+  data:
+    debug: "true"
+    log-level: "DEBUG"
+
+---
+# Kustomization for staging environment
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: kustomization-staging
+  namespace: staging
+
+# Override for staging
+replicas:
+- name: aghamohandes-web
+  count: 2
+- name: aghamohandes-beat
+  count: 1
+
+# Staging-specific patches
+patchesStrategicMerge:
+- |-
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: aghamohandes-config
+  data:
+    debug: "true"
+    allowed-hosts: "staging.example.com"
+    cors-origins: "https://staging-frontend.example.com"
+
+---
+# Kustomization for production environment
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: kustomization-prod
+  namespace: production
+
+# Override for production
+replicas:
+- name: aghamohandes-web
+  count: 3
+- name: aghamohandes-beat
+  count: 1
+
+# Production-specific patches
+patchesStrategicMerge:
+- |-
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: aghamohandes-config
+  data:
+    debug: "false"
+    log-level: "WARNING"
+    allowed-hosts: "api.example.com,www.example.com"
+    cors-origins: "https://frontend.example.com"
+
+# Production resource limits are stricter
+- |-
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: aghamohandes-web
+  spec:
+    template:
+      spec:
+        containers:
+        - name: web
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "2000m"
