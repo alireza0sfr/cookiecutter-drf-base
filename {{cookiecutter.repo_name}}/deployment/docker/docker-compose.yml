@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: {{ cookiecutter.postgres_db }}
+      POSTGRES_USER: {{ cookiecutter.postgres_user }}
+      POSTGRES_PASSWORD: {{ cookiecutter.postgres_password }}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "{{ cookiecutter.postgres_port }}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ cookiecutter.postgres_user }}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "{{ cookiecutter.redis_port }}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ../..
+      dockerfile: deployment/docker/Dockerfile
+      target: development
+    environment:
+      DEBUG: 'True'
+      ENVIRONMENT: development
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: {{ cookiecutter.postgres_db }}
+      DATABASE_USER: {{ cookiecutter.postgres_user }}
+      DATABASE_PASSWORD: {{ cookiecutter.postgres_password }}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ALLOWED_HOSTS: 'localhost,127.0.0.1,web'
+    volumes:
+      - ../..:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python manage.py runserver 0.0.0.0:8000
+
+volumes:
+  postgres_data:

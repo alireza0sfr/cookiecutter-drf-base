@@ -1,0 +1,119 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "{{ cookiecutter.repo_name }}"
+version = "0.1.0"
+description = "{{ cookiecutter.project_description }}"
+authors = [
+    {name = "{{ cookiecutter.author_name }}", email = "{{ cookiecutter.author_email }}"}
+]
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+[project.urls]
+Homepage = "https://github.com/yourusername/{{ cookiecutter.repo_name }}"
+Repository = "https://github.com/yourusername/{{ cookiecutter.repo_name }}.git"
+Documentation = "https://github.com/yourusername/{{ cookiecutter.repo_name }}/tree/main/docs"
+
+[dependency-groups]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-django>=4.5.0",
+    "factory-boy>=3.2.0",
+    "faker>=15.0.0",
+    "django-debug-toolbar>=4.0.0",
+    "django-extensions>=3.2.0",
+    "ipython>=8.0.0",
+    "pre-commit>=3.0.0",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.uv.sources]
+# Add custom package sources here if needed
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "{{ cookiecutter.__project_slug }}.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "--cov=apps --cov=core --cov-report=html --cov-report=term-missing"
+testpaths = ["tests", "apps"]
+
+[tool.coverage.run]
+source = ["apps", "core"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/test_*.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".venv", "migrations"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # Pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "apps"]
+known-django = ["django"]
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+extend-exclude = '''
+/(
+  # directories
+  \.venv
+  | migrations
+  | __pycache__
+)/
+'''
+
+[tool.mypy]
+python_version = "3.11"
+check_untyped_defs = true
+ignore_missing_imports = true
+plugins = ["mypy_django_plugin.main"]
+
+[tool.django-stubs]
+django_settings_module = "{{ cookiecutter.__project_slug }}.settings"
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_gitignore = true
+known_first_party = ["core", "apps"]
+known_django = ["django"]
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
