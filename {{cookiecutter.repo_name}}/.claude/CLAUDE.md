@@ -46,6 +46,52 @@ See [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md) for detailed setup and command
 └── CLAUDE.md                      # This file
 ```
 
+## Graphify for Smart Code Discovery
+
+**Use Graphify instead of raw grepping to save tokens and get better results.**
+
+Graphify builds a knowledge graph of your codebase and answers structural questions intelligently. Always use it for code navigation and discovery instead of manual searching or asking Claude to grep.
+
+### Common Graphify Queries
+
+```bash
+# Find where something is defined or used
+graphify query "where is <symbol> defined"
+graphify query "where is caching configured"
+graphify query "which files reference <model-name>"
+
+# Understand relationships between components
+graphify path "User" "Permission"
+graphify path "BaseViewSet" "CustomAutoSchema"
+
+# Explore architectural concepts
+graphify explain "input/output serializer pattern"
+graphify explain "django-lifecycle hooks vs signals"
+graphify explain "factory_boy usage in tests"
+
+# Find implementation patterns
+graphify query "show me examples of admin classes with filters"
+graphify query "find all serializers with custom validation"
+
+# Debug and troubleshoot
+graphify query "where is the error handler for 404"
+graphify query "how is pagination implemented"
+```
+
+### Token Savings with Graphify
+
+Instead of:
+- ❌ Asking Claude to read files and search (multiple file reads = many tokens)
+- ❌ Running `grep -r` and pasting results (large result sets)
+- ❌ Re-explaining the codebase structure in each session
+
+Use:
+- ✅ `graphify query` to find exact locations (1 API call)
+- ✅ `graphify explain` to understand patterns (semantic understanding)
+- ✅ `graphify path` to trace relationships (graph traversal)
+
+**Each session should start with graphify queries to understand the relevant code before asking Claude to work on it.** This reduces the context Claude needs to load and speeds up iterations.
+
 ## Key Standards
 
 ### Models
@@ -164,4 +210,5 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`
 
 ---
 
-**Last Updated**: 2026-07-31
+**Last Updated**: 2026-07-31  
+**Latest Update**: Added Graphify for Smart Code Discovery to reduce token usage in sessions
