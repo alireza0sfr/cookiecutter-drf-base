@@ -2,7 +2,7 @@
 # Stages: builder, development, production-base, staging, production
 
 # Stage 1: Builder
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -16,7 +16,7 @@ COPY pyproject.toml uv.lock* ./
 RUN pip install uv && uv pip install --system -e .
 
 # Stage 2: Development
-FROM python:3.11-slim as development
+FROM python:3.12-slim as development
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
@@ -44,7 +44,7 @@ EXPOSE 8000
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 # Stage 3: Production Base
-FROM python:3.11-slim as production-base
+FROM python:3.12-slim as production-base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
@@ -55,7 +55,7 @@ RUN useradd -m -u 1000 appuser
 WORKDIR /app
 
 # Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
