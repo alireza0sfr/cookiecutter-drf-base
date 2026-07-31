@@ -12,7 +12,8 @@ from jalali_date import date2jalali, datetime2jalali
 from jalali_date.admin import ModelAdminJalaliMixin
 from jalali_date.fields import JalaliDateField, SplitJalaliDateTimeField
 from jalali_date.widgets import AdminJalaliDateWidget, AdminSplitJalaliDateTime
-from unfold.admin import ModelAdmin, UnfoldAction, UnfoldBooleanSwitchWidget
+from unfold.admin import ModelAdmin
+from unfold.widgets import UnfoldBooleanSwitchWidget
 
 from core.models import MoneyField, format_number_with_commas
 
@@ -70,7 +71,7 @@ class BaseModelAdmin(ModelAdminJalaliMixin, ModelAdmin):
 
         return new_fields
 
-    def get_actions_detail(self, request: HttpRequest, object_id: int = None) -> List[UnfoldAction]:
+    def get_actions_detail(self, request: HttpRequest, object_id: int = None) -> List[Any]:
         return self._filter_unfold_actions_by_permissions(request, self._get_base_actions_detail())
 
     def get_fieldsets(self, request, obj=None):
