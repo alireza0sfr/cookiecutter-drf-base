@@ -36,7 +36,6 @@ THIRD_PARTY_APPS = [
     'corsheaders',
     'django_filters',
     'unfold',
-    'django_lifecycle',
 ]
 
 LOCAL_APPS = [
