@@ -6,18 +6,27 @@ Environment variables should be set in .env file.
 import os
 from pathlib import Path
 
+import environ
+
+env = environ.Env(
+    DEBUG=(bool, False),
+)
+
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Take environment variables from .env file
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-me-in-production')
+SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+DEBUG = env("DEBUG")
 
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+ENVIRONMENT = env("ENVIRONMENT", default="development")
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = env("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS]
 
 # Application definition
@@ -84,16 +93,13 @@ WSGI_APPLICATION = '{{ cookiecutter.__project_slug }}.wsgi.application'
 
 # Database
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DATABASE_NAME', '{{ cookiecutter.postgres_db }}'),
-        'USER': os.getenv('DATABASE_USER', '{{ cookiecutter.postgres_user }}'),
-        'PASSWORD': os.getenv('DATABASE_PASSWORD', '{{ cookiecutter.postgres_password }}'),
-        'HOST': os.getenv('DATABASE_HOST', '{{ cookiecutter.postgres_host }}'),
-        'PORT': os.getenv('DATABASE_PORT', '{{ cookiecutter.postgres_port }}'),
-        'CONN_MAX_AGE': int(os.getenv('DATABASE_CONN_MAX_AGE', '600')),
-    }
+    'default': env.db(
+        default='postgresql://{{ cookiecutter.postgres_user }}:{{ cookiecutter.postgres_password }}@{{ cookiecutter.postgres_host }}:{{ cookiecutter.postgres_port }}/{{ cookiecutter.postgres_db }}'
+    )
 }
+
+# Connection pool settings
+DATABASES['default']['CONN_MAX_AGE'] = env.int('DATABASE_CONN_MAX_AGE', default=600)
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

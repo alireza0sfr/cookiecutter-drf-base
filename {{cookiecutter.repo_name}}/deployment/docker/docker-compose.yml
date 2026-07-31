@@ -35,13 +35,10 @@ services:
     environment:
       DEBUG: 'True'
       ENVIRONMENT: development
-      DATABASE_HOST: db
-      DATABASE_PORT: 5432
-      DATABASE_NAME: {{ cookiecutter.postgres_db }}
-      DATABASE_USER: {{ cookiecutter.postgres_user }}
-      DATABASE_PASSWORD: {{ cookiecutter.postgres_password }}
+      DATABASE_URL: postgresql://{{ cookiecutter.postgres_user }}:{{ cookiecutter.postgres_password }}@db:5432/{{ cookiecutter.postgres_db }}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      SECRET_KEY: dev-secret-key-change-in-production
       ALLOWED_HOSTS: 'localhost,127.0.0.1,web'
     volumes:
       - ../..:/app
