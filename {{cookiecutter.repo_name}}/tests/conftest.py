@@ -16,7 +16,7 @@ from rest_framework.test import APIClient
 from django.contrib.auth.models import User
 
 # Ensure Django is set up
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'aghamohandes_backend.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', '{{ cookiecutter.__project_slug }}.settings')
 django.setup()
 
 

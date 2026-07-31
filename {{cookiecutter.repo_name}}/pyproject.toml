@@ -6,21 +6,63 @@ build-backend = "setuptools.build_meta"
 name = "{{ cookiecutter.repo_name }}"
 version = "0.1.0"
 description = "{{ cookiecutter.project_description }}"
-authors = [
-    {name = "{{ cookiecutter.author_name }}", email = "{{ cookiecutter.author_email }}"}
-]
+readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+authors = [
+    { name = "{{ cookiecutter.author_name }}", email = "{{ cookiecutter.author_email }}" }
+]
+license = { text = "MIT" }
+dependencies = [
+    # Core Django
+    "Django==5.0.2",
+    "asgiref==3.7.2",
+
+    # Django REST Framework
+    "djangorestframework==3.14.0",
+    "drf-spectacular==0.27.2",
+    "djangorestframework-camel-case==1.4.2",
+    "djangorestframework-simplejwt==5.3.1",
+
+    # Django Admin & UI
+    "django-unfold==0.33.0",
+    "django-jalali-date==1.1.0",
+
+    # Django Extensions
+    "django-cors-headers==4.3.1",
+    "django-filter==23.5",
+    "django-lifecycle==1.1.2",
+    "django-environ==0.11.2",
+
+    # Database
+    "psycopg2-binary==2.9.9",
+
+    # Caching & Messaging
+    "redis==5.0.4",
+    "celery==5.4.0",
+
+    # Utilities
+    "requests==2.31.0",
+    "pillow==10.2.0",
+    "pytz==2024.1",
+    "inflection==0.5.1",
+    "packaging==23.2",
+    "PyYAML==6.0.1",
+    "typing_extensions==4.9.0",
+    "uritemplate==4.1.1",
+    "urllib3==2.2.1",
+    "sqlparse==0.4.4",
+]
 
 [project.urls]
 Homepage = "https://github.com/yourusername/{{ cookiecutter.repo_name }}"
 Repository = "https://github.com/yourusername/{{ cookiecutter.repo_name }}.git"
 Documentation = "https://github.com/yourusername/{{ cookiecutter.repo_name }}/tree/main/docs"
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
-    "black>=23.0.0",
-    "ruff>=0.1.0",
+    "pre-commit>=3.7.1",
+    "ruff>=0.4.7",
+    "ipython>=8.27.0",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-django>=4.5.0",
@@ -28,20 +70,49 @@ dev = [
     "faker>=15.0.0",
     "django-debug-toolbar>=4.0.0",
     "django-extensions>=3.2.0",
-    "ipython>=8.0.0",
-    "pre-commit>=3.0.0",
+]
+sms = [
+    "kavenegar>=1.1.2",
+]
+apm = [
+    "elastic-apm>=6.23.0",
 ]
 
-[tool.uv]
-default-groups = ["dev"]
+[tool.setuptools]
+packages = ["{{ cookiecutter.__project_slug }}", "apps", "core"]
 
-[tool.uv.sources]
-# Add custom package sources here if needed
+[tool.ruff]
+# Python version this project targets
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # Pyflakes
+    "I",    # isort
+    "C4",   # flake8-comprehensions
+    "B",    # flake8-bugbear
+    "DJ",   # flake8-django
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E203",   # whitespace before :
+    "B008",   # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["{{ cookiecutter.__project_slug }}", "apps", "core"]
+known-django = ["django"]
+
+[tool.ruff.lint.flake8-django]
+django-settings-module = "{{ cookiecutter.__project_slug }}.settings"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "{{ cookiecutter.__project_slug }}.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
-addopts = "--cov=apps --cov=core --cov-report=html --cov-report=term-missing"
+addopts = "--strict-markers --cov=apps --cov=core --cov-report=html --cov-report=term-missing --cov-fail-under=80"
 testpaths = ["tests", "apps"]
 
 [tool.coverage.run]
@@ -64,56 +135,5 @@ exclude_lines = [
     "@(abc\\.)?abstractmethod",
 ]
 
-[tool.ruff]
-line-length = 100
-target-version = "py311"
-exclude = [".venv", "migrations"]
-
-[tool.ruff.lint]
-select = [
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # Pyflakes
-    "I",    # isort
-    "N",    # pep8-naming
-    "B",    # flake8-bugbear
-    "C4",   # flake8-comprehensions
-]
-ignore = [
-    "E501",  # line too long (handled by formatter)
-    "B008",  # do not perform function calls in argument defaults
-]
-
-[tool.ruff.lint.isort]
-known-first-party = ["core", "apps"]
-known-django = ["django"]
-sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-
-[tool.black]
-line-length = 100
-target-version = ["py311"]
-extend-exclude = '''
-/(
-  # directories
-  \.venv
-  | migrations
-  | __pycache__
-)/
-'''
-
-[tool.mypy]
-python_version = "3.11"
-check_untyped_defs = true
-ignore_missing_imports = true
-plugins = ["mypy_django_plugin.main"]
-
 [tool.django-stubs]
 django_settings_module = "{{ cookiecutter.__project_slug }}.settings"
-
-[tool.isort]
-profile = "black"
-line_length = 100
-skip_gitignore = true
-known_first_party = ["core", "apps"]
-known_django = ["django"]
-sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]

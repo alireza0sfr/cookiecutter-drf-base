@@ -6,13 +6,13 @@ from celery import Celery
 from django.conf import settings
 
 os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE", "aghamohandes_backend.settings"
+    "DJANGO_SETTINGS_MODULE", "{{ cookiecutter.__project_slug }}.settings"
 )
 
 
 # set the default Django settings module for the 'celery' program.
 app = Celery(
-    "aghamohandes-backend",
+    "{{ cookiecutter.repo_name }}",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
 )

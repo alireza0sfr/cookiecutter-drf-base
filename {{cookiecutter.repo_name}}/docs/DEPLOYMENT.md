@@ -1,214 +1,333 @@
 # Deployment Guide
 
-Production deployment for {{ cookiecutter.project_name }}.
-
-## Pre-Deployment Checklist
-
-- [ ] All tests passing with 80%+ coverage
-- [ ] No uncommitted changes
-- [ ] Environment variables configured
-- [ ] Database migrations created and tested
-- [ ] Static files collected
-- [ ] Security checklist completed
-
 ## Environments
 
-### Development
-- Local development with Django dev server
-- Debug mode enabled
-- Live reload of code changes
+- **Development**: Local machine with Django dev server
+- **Staging**: Pre-production clone of production
+- **Production**: Live environment serving end users
 
-### Staging
-- Production-like environment for testing
-- Debug mode may be enabled
-- Full HTTPS with self-signed cert
+## Prerequisites
 
-### Production
-- Full production deployment
-- Debug mode disabled
-- All security features enabled
-- Regular backups configured
-
-## Docker Deployment
-
-### Build Image
-
-```bash
-# Development
-docker build -f deployment/docker/Dockerfile --target development \
-  -t {{ cookiecutter.repo_name }}:dev .
-
-# Staging
-docker build -f deployment/docker/Dockerfile --target staging \
-  -t {{ cookiecutter.repo_name }}:staging .
-
-# Production
-docker build -f deployment/docker/Dockerfile --target production \
-  -t {{ cookiecutter.repo_name }}:1.0.0 .
-```
-
-### Run with Docker Compose
-
-```bash
-# Development
-docker-compose -f deployment/docker/docker-compose.yml up
-
-# Staging
-docker-compose -f deployment/docker/docker-compose.staging.yml up -d
-
-# Production
-docker-compose -f deployment/docker/docker-compose.prod.yml up -d
-```
+- Docker & Docker Compose (recommended)
+- PostgreSQL 14+
+- Redis
+- Python 3.11+
+- Gunicorn (production WSGI server)
 
 ## Environment Configuration
 
-### Production Environment
-
-Create `.env.prod`:
+### .env File
 
 ```bash
-DEBUG=False
-ENVIRONMENT=production
-SECRET_KEY=your-strong-random-secret-key
+# Django
+DEBUG=false
+SECRET_KEY=your-secret-key-here
 ALLOWED_HOSTS=api.example.com,www.example.com
 
-DATABASE_NAME=prod_db_name
-DATABASE_USER=prod_user
-DATABASE_PASSWORD=prod_strong_password
-DATABASE_HOST=db.example.com
-DATABASE_PORT=5432
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/aghamohandes
 
-REDIS_HOST=cache.example.com
+# Cache
+REDIS_HOST=localhost
 REDIS_PORT=6379
 
-SECURE_SSL_REDIRECT=True
-SECURE_HSTS_SECONDS=31536000
-SESSION_COOKIE_SECURE=True
-CSRF_COOKIE_SECURE=True
+# Email
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=noreply@example.com
+EMAIL_HOST_PASSWORD=password
+EMAIL_USE_TLS=true
+
+# Security
+SITE_URL=https://api.example.com
+CORS_ALLOWED_ORIGINS=https://frontend.example.com
+
+# APM (Optional)
+APM_SERVER_URL=https://apm.example.com
+APM_SERVER_TOKEN=your-apm-token
 ```
 
-## Database Migrations
+## Deployment Steps
 
-Always test migrations locally first:
+### 1. Prepare Code
 
 ```bash
-# Create migrations
-python manage.py makemigrations
+# Pull latest code
+git pull origin main
 
-# Test migration
-python manage.py migrate --plan
+# Check for pending migrations
+python manage.py makemigrations --check
+
+# Run validation
+./scripts/validate.sh
+```
+
+### 2. Database Setup
+
+```bash
+# Run migrations
 python manage.py migrate
 
-# In production
-docker-compose exec web python manage.py migrate --noinput
-```
+# Create superuser (development only)
+python manage.py createsuperuser
 
-## Static Files
-
-Collect static files before deployment:
-
-```bash
+# Collect static files
 python manage.py collectstatic --noinput
 ```
 
-## Security Checklist
+### 3. Start Services
 
-- [ ] `SECRET_KEY` is strong and unique
-- [ ] `DEBUG=False` in production
-- [ ] `ALLOWED_HOSTS` is configured
-- [ ] HTTPS/SSL is enabled
-- [ ] HSTS headers are set
-- [ ] CSRF protection is enabled
-- [ ] CORS is properly configured
-- [ ] Database password is strong
-- [ ] No secrets in `.env` (use secrets management)
-- [ ] Admin user password is changed
-- [ ] Dependencies are up to date
+#### Using Docker Compose
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: aghamohandes
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    command: gunicorn aghamohandes_backend.wsgi:application --bind 0.0.0.0:8000
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/aghamohandes
+      - REDIS_HOST=redis
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+
+  celery:
+    build: .
+    command: celery -A aghamohandes_backend worker -l info
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/aghamohandes
+      - REDIS_HOST=redis
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:
+```
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f web
+```
+
+#### Manual Setup
+
+```bash
+# Run Gunicorn (production WSGI server)
+gunicorn aghamohandes_backend.wsgi:application \
+    --bind 0.0.0.0:8000 \
+    --workers 4 \
+    --worker-class sync \
+    --timeout 30
+
+# Run Celery worker
+celery -A aghamohandes_backend worker -l info
+
+# Run Celery beat (scheduler)
+celery -A aghamohandes_backend beat -l info
+```
+
+### 4. Configure Reverse Proxy (Nginx)
+
+```nginx
+upstream django {
+    server localhost:8000;
+}
+
+server {
+    listen 80;
+    server_name api.example.com;
+
+    # Redirect to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name api.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+
+    client_max_body_size 10M;
+
+    location /static/ {
+        alias /var/www/aghamohandes/static/;
+    }
+
+    location /media/ {
+        alias /var/www/aghamohandes/media/;
+    }
+
+    location / {
+        proxy_pass http://django;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+    }
+}
+```
+
+## Health Checks
+
+### Health Endpoint
+
+```bash
+# Add to aghamohandes_backend/urls.py
+path('health/', lambda request: JsonResponse({'status': 'ok'}))
+```
+
+### Monitoring
+
+```bash
+# Check service status
+curl https://api.example.com/health/
+
+# Monitor logs
+tail -f /var/log/aghamohandes.log
+
+# Check database
+python manage.py dbshell
+
+# Monitor task queue
+celery -A aghamohandes_backend inspect active
+```
 
 ## Backup & Recovery
 
 ### Database Backup
 
 ```bash
-# Backup
-pg_dump -h host -U user -d database > backup.sql
+# Backup PostgreSQL
+pg_dump -h localhost -U postgres aghamohandes > backup.sql
 
-# Restore
-psql -h host -U user -d database < backup.sql
+# Restore from backup
+psql -h localhost -U postgres aghamohandes < backup.sql
+
+# Automated backups (daily at 2 AM)
+0 2 * * * pg_dump -h localhost -U postgres aghamohandes > /backups/aghamohandes-$(date +\%Y-\%m-\%d).sql
 ```
 
 ### Media Files Backup
 
 ```bash
-# Backup
+# Backup media directory
 tar -czf media-backup.tar.gz media/
 
-# Restore
+# Restore media
 tar -xzf media-backup.tar.gz
 ```
 
-## Monitoring
+## Scaling
 
-Monitor production services:
-
-- Health checks: `/health/`
-- Error logs: Application logs
-- Performance: Response times, errors
-- Database: Connection pool, slow queries
-
-## Rollback Procedures
-
-### Docker
+### Horizontal Scaling
 
 ```bash
-# If deployment fails, use previous image version
-docker-compose -f deployment/docker/docker-compose.prod.yml down
-docker tag {{ cookiecutter.repo_name }}:1.0.0-previous {{ cookiecutter.repo_name }}:latest
-docker-compose -f deployment/docker/docker-compose.prod.yml up -d
+# Multiple Gunicorn workers
+gunicorn aghamohandes_backend.wsgi:application \
+    --bind 0.0.0.0:8000 \
+    --workers 4                    # CPU cores * 2 + 1
+    --worker-class uvicorn.workers.UvicornWorker
+
+# Multiple Celery workers
+celery -A aghamohandes_backend worker --concurrency=4
 ```
 
-### Database
+### Load Balancing
 
-Keep backups of all migrations. If needed:
+Use Nginx upstream or cloud load balancer:
+
+```nginx
+upstream django_cluster {
+    server web1.example.com:8000;
+    server web2.example.com:8000;
+    server web3.example.com:8000;
+}
+
+server {
+    location / {
+        proxy_pass http://django_cluster;
+    }
+}
+```
+
+## CI/CD Pipeline
+
+### GitHub Actions Example
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+      - run: pip install -r requirements.txt
+      - run: pytest --cov=apps --cov-fail-under=80
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: ssh deploy@example.com 'cd /app && git pull && ./deploy.sh'
+```
+
+## Zero-Downtime Deployment
+
+### Blue-Green Deployment
 
 ```bash
-# Reverse last migration
-python manage.py migrate app_name 0001_previous
+# 1. Deploy to "green" environment (new version)
+git checkout main
+git pull
+python manage.py migrate
+python manage.py collectstatic --noinput
+# Start green environment on separate port
 
-# Manually edit database if needed
-psql -U user -d database
+# 2. Test green environment
+curl http://localhost:8001/health/
+
+# 3. Switch traffic to green
+# Update load balancer to point to green environment
+
+# 4. Keep blue running for quick rollback
+# If issues detected, switch back to blue
+
+# 5. After verification, shut down blue
 ```
-
-## Performance Optimization
-
-### Caching
-
-- Cache expensive queries with Redis
-- Use cache decorators on views
-- Set appropriate TTLs
-
-### Database Optimization
-
-- Add indexes on frequently queried columns
-- Use `select_related()` and `prefetch_related()`
-- Monitor slow queries
-
-### Compression
-
-- Gzip responses (enabled in Nginx)
-- Minimize CSS/JS assets
-- Optimize images
-
-## Maintenance
-
-### Regular Tasks
-
-- Monitor disk space
-- Update dependencies
-- Review error logs
-- Backup databases
-- Test recovery procedures
 
 ---
 
-**Last Updated**: 2026-07-29
+For production security checklist, see [SECURITY.md](guides/security.md).
