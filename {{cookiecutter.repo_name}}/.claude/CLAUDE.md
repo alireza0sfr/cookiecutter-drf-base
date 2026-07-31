@@ -20,6 +20,20 @@ See [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md) for detailed setup and command
 {{ cookiecutter.repo_name }}/
 ├── apps/                          # Django apps
 │   ├── base/                      # Base/shared functionality
+│   │   ├── models/
+│   │   │   ├── __init__.py        # Imports all models
+│   │   │   └── <model-name>.py
+│   │   ├── admin/
+│   │   │   ├── __init__.py        # Imports all admin configs
+│   │   │   └── <model-name>_admin.py
+│   │   ├── views/
+│   │   │   ├── __init__.py        # Imports all viewsets
+│   │   │   └── <model-name>_views.py
+│   │   ├── serializers/
+│   │   │   ├── __init__.py        # Imports all serializers
+│   │   │   └── <model-name>_serializers.py
+│   │   ├── apps.py
+│   │   └── urls.py
 │   ├── dashboard/                 # Admin dashboard
 │   └── [feature apps]/            # Feature-specific apps
 ├── core/                          # Reusable utilities
@@ -51,10 +65,65 @@ See [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md) for detailed setup and command
 
 ### Admin
 - **MUST** extend `UnfoldModelAdmin` from `core.admin`
+- **MUST** use `ClassVar` annotation or initialize list attributes in `__init__` (RUF012)
+  - ❌ Bad: `list_display = ['field1', 'field2']`
+  - ✅ Good: `list_display: ClassVar = ['field1', 'field2']` or initialize in `__init__`
+  - This prevents ruff linting errors for mutable default values on class attributes
 
 ### Testing
 - **MINIMUM** 80% code coverage
 - **TARGET** 90%+ coverage
+
+## File and Directory Naming Conventions
+
+Each app **MUST** organize code into dedicated directories with the following structure:
+
+```
+apps/<app-name>/
+├── models/
+│   ├── __init__.py         # from .<model-name> import <ModelName>
+│   └── <model-name>.py     # One model class per file
+├── admin/
+│   ├── __init__.py         # from .<model-name>_admin import <ModelName>Admin
+│   └── <model-name>_admin.py
+├── views/
+│   ├── __init__.py         # from .<model-name>_views import <ModelName>ViewSet
+│   └── <model-name>_views.py
+├── serializers/
+│   ├── __init__.py         # from .<model-name>_serializers import ...
+│   └── <model-name>_serializers.py
+├── migrations/
+├── apps.py
+└── urls.py
+```
+
+### Naming Rules
+- **Model files**: `<model-name>.py` (snake_case, matches model name)
+- **Admin files**: `<model-name>_admin.py`
+- **View files**: `<model-name>_views.py`
+- **Serializer files**: `<model-name>_serializers.py`
+- **Directory __init__.py**: Import and re-export from submodules to enable clean imports
+
+### Import Pattern
+Instead of:
+```python
+from apps.users.models.user import User
+from apps.users.admin.user_admin import UserAdmin
+```
+
+Use:
+```python
+from apps.users.models import User
+from apps.users.admin import UserAdmin
+```
+
+Achieve this by populating `__init__.py` files:
+```python
+# apps/users/models/__init__.py
+from .user import User
+
+__all__ = ['User']
+```
 
 ## Quick Commands
 
@@ -95,4 +164,4 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`
 
 ---
 
-**Last Updated**: 2026-07-29
+**Last Updated**: 2026-07-31
