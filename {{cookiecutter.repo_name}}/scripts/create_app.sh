@@ -194,14 +194,14 @@ EOF
 # Remove auto-generated models.py and replace with directory structure
 rm "$APP_PATH/models.py"
 
-cat > "$APP_PATH/models/__init__.py" << 'EOF'
-"""Models for the {{ cookiecutter.repo_name }} {{ cookiecutter.app_name }} app.
+cat > "$APP_PATH/models/__init__.py" << EOF
+"""Models for the $APP_NAME app.
 
 Import your models here to enable clean imports:
-    from apps.{{ cookiecutter.app_name }}.models import MyModel
+    from apps.$APP_NAME.models import MyModel
 
 Example:
-    Create a file: apps/{{ cookiecutter.app_name }}/models/my_model.py
+    Create a file: apps/$APP_NAME/models/my_model.py
     Add content and import here:
         from .my_model import MyModel
 """
@@ -210,14 +210,14 @@ EOF
 # Remove auto-generated admin.py
 rm "$APP_PATH/admin.py"
 
-cat > "$APP_PATH/admin/__init__.py" << 'EOF'
+cat > "$APP_PATH/admin/__init__.py" << EOF
 """Admin configuration for the app.
 
 Import your admin classes here to register them:
-    from apps.{{ cookiecutter.app_name }}.admin import MyModelAdmin
+    from apps.$APP_NAME.admin import MyModelAdmin
 
 Example:
-    Create a file: apps/{{ cookiecutter.app_name }}/admin/my_model_admin.py
+    Create a file: apps/$APP_NAME/admin/my_model_admin.py
     Add admin config and import here.
 """
 EOF
@@ -225,28 +225,28 @@ EOF
 # Remove auto-generated views.py
 rm "$APP_PATH/views.py"
 
-cat > "$APP_PATH/views/__init__.py" << 'EOF'
+cat > "$APP_PATH/views/__init__.py" << EOF
 """Views and viewsets for the app.
 
 Import your viewsets here to enable clean imports:
-    from apps.{{ cookiecutter.app_name }}.views import MyModelViewSet
+    from apps.$APP_NAME.views import MyModelViewSet
 
 Example:
-    Create a file: apps/{{ cookiecutter.app_name }}/views/my_model_views.py
+    Create a file: apps/$APP_NAME/views/my_model_views.py
     Add viewset and import here.
 """
 EOF
 
 # Create serializers/__init__.py if it doesn't exist
 if [ ! -f "$APP_PATH/serializers.py" ]; then
-    cat > "$APP_PATH/serializers/__init__.py" << 'EOF'
+    cat > "$APP_PATH/serializers/__init__.py" << EOF
 """Serializers for API endpoints.
 
 Import your serializers here to enable clean imports:
-    from apps.{{ cookiecutter.app_name }}.serializers import MyModelSerializer
+    from apps.$APP_NAME.serializers import MyModelSerializer
 
 Example:
-    Create a file: apps/{{ cookiecutter.app_name }}/serializers/my_model_serializers.py
+    Create a file: apps/$APP_NAME/serializers/my_model_serializers.py
     Add serializers and import here.
 
 Remember to create SEPARATE input and output serializers for proper request/response handling:
@@ -286,6 +286,6 @@ echo "4. Create admin config in $APP_PATH/admin/<model-name>_admin.py"
 echo "5. Add tests to $APP_PATH/tests/"
 echo "6. Update __init__.py files to import your classes"
 echo "7. Register in settings.py INSTALLED_APPS"
-echo "8. Include URLs in {{ cookiecutter.__project_slug }}/urls.py"
+echo "8. Include URLs in your project's urls.py file"
 echo ""
 echo "Remember to follow the CLAUDE.md guidelines!"
