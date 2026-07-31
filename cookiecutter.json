@@ -26,7 +26,8 @@
   "secret_key": "{{ range(1, 999999999) | random }}",
   "_copy_without_render": [
     "*.html",
-    "*.md",
+    "docs/**/*.md",
+    "README.md",
     ".dockerignore",
     ".gitignore",
     "locale/**"
